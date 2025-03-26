@@ -113,29 +113,88 @@ begin
 
     -- Stimulus process: reads the input file, applies stimulus, and writes results.
     stim_proc: process
-        variable in_line  : line;
-        variable out_line : line;
-        variable op_token : string(1 to 10);
-        variable op_int   : integer;
-        variable op2_int  : integer;
-        variable bs_int   : integer;
-        variable st_int   : integer;
-        variable op_enum  : alu_op_t;
-        variable dummy    : string(1 to 1); -- used to absorb delimiters if needed
+        variable in_line     : line;
+        variable out_line    : line;
+        variable line_content: string(1 to 100);
+        variable line_length : natural;
+        variable op_name     : string(1 to 10);
+        variable op_int      : integer;
+        variable op2_int     : integer;
+        variable bs_int      : integer;
+        variable st_int      : integer;
+        variable idx         : natural;
     begin
         while not endfile(input_file) loop
-            -- Fixed: use input_file instead of input_line.
             readline(input_file, in_line);
-            -- Assume the file tokens are: operation operand_A operand_B bit_select status_in
-            read(in_line, op_token);
-            read(in_line, op_int);
-            read(in_line, op2_int);
-            read(in_line, bs_int);
-            read(in_line, st_int);
-
-            -- Convert tokens to signals:
-            op_enum := to_alu_op(op_token);
-            op <= op_enum;
+            
+            -- Read entire line as a string for simplicity
+            line_content := (others => ' ');
+            line_length := in_line'length;
+            if line_length > 100 then
+                line_length := 100;
+            end if;
+            line_content(1 to line_length) := in_line.all(1 to line_length);
+            
+            -- Find the first space to extract operation name
+            idx := 1;
+            while idx <= line_length and line_content(idx) /= ' ' loop
+                idx := idx + 1;
+            end loop;
+            
+            -- Extract operation name
+            op_name := (others => ' ');
+            op_name(1 to idx-1) := line_content(1 to idx-1);
+            
+            -- Skip spaces
+            while idx <= line_length and line_content(idx) = ' ' loop
+                idx := idx + 1;
+            end loop;
+            
+            -- Extract operand_A
+            op_int := 0;
+            while idx <= line_length and line_content(idx) >= '0' and line_content(idx) <= '9' loop
+                op_int := op_int * 10 + character'pos(line_content(idx)) - character'pos('0');
+                idx := idx + 1;
+            end loop;
+            
+            -- Skip spaces
+            while idx <= line_length and line_content(idx) = ' ' loop
+                idx := idx + 1;
+            end loop;
+            
+            -- Extract operand_B
+            op2_int := 0;
+            while idx <= line_length and line_content(idx) >= '0' and line_content(idx) <= '9' loop
+                op2_int := op2_int * 10 + character'pos(line_content(idx)) - character'pos('0');
+                idx := idx + 1;
+            end loop;
+            
+            -- Skip spaces
+            while idx <= line_length and line_content(idx) = ' ' loop
+                idx := idx + 1;
+            end loop;
+            
+            -- Extract bit_select
+            bs_int := 0;
+            while idx <= line_length and line_content(idx) >= '0' and line_content(idx) <= '9' loop
+                bs_int := bs_int * 10 + character'pos(line_content(idx)) - character'pos('0');
+                idx := idx + 1;
+            end loop;
+            
+            -- Skip spaces
+            while idx <= line_length and line_content(idx) = ' ' loop
+                idx := idx + 1;
+            end loop;
+            
+            -- Extract status_in
+            st_int := 0;
+            while idx <= line_length and line_content(idx) >= '0' and line_content(idx) <= '9' loop
+                st_int := st_int * 10 + character'pos(line_content(idx)) - character'pos('0');
+                idx := idx + 1;
+            end loop;
+            
+            -- Apply signals
+            op <= to_alu_op(op_name);
             operand_A <= std_logic_vector(to_unsigned(op_int, 8));
             operand_B <= std_logic_vector(to_unsigned(op2_int, 8));
             bit_select <= std_logic_vector(to_unsigned(bs_int, 3));
@@ -144,13 +203,14 @@ begin
             wait for 10 ns;  -- Allow time for the ALU to compute
 
             -- Write a summary to the output file
-            write(out_line, string'("Operation: ") & op_token &
-                             string'(" | operand_A: ") & integer'image(op_int) &
-                             string'(" | operand_B: ") & integer'image(op2_int) &
-                             string'(" | Result: ") & integer'image(to_integer(unsigned(result))) &
-                             string'(" | Status: ") & integer'image(to_integer(unsigned(status_out))));
+            write(out_line, string'("Operation: ") & op_name &
+                           string'(" | operand_A: ") & integer'image(op_int) &
+                           string'(" | operand_B: ") & integer'image(op2_int) &
+                           string'(" | Result: ") & integer'image(to_integer(unsigned(result))) &
+                           string'(" | Status: ") & integer'image(to_integer(unsigned(status_out))));
             writeline(output_file, out_line);
         end loop;
+        
         wait;
     end process stim_proc;
 
