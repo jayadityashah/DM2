@@ -1,0 +1,17 @@
+*~
+*.swp
+synthesis/dbs/*
+synthesis/reports/*
+synthesis/*.cmd*
+synthesis/*.log*
+synthesis/flow/tech/*
+synthesis/flow/scripts/common_vars.tcl
+synthesis/fv/*
+
+# Routine for including only Makefile present in simulations/ or subdirectories  
+simulations/*
+!simulations/*/
+simulations/*/**
+!simulations/**/Makefile
+!simulations/**/input.txt
+!simulations/**/output.txt
